@@ -1,6 +1,6 @@
 # Inbound Email (SMTP) to Webhook
 
-Author: [Martin Alexander](https://martinalexander.me/) - [LinkedIn](https://www.linkedin.com/in/martin-alexander)
+Author: Martin Krivosija - [LinkedIn](https://linkedin.com/in/martin-alexander-k)
 
 A simple, efficient script that provides an SMTP server to receive emails, parse content (including headers), store attachments in Amazon S3, and forward email content to a webhook. Graceful handling of multiple concurrent SMTP sessions and webhook requests.
 
@@ -24,7 +24,7 @@ A simple, efficient script that provides an SMTP server to receive emails, parse
 
 1. Clone this repository:
    ```
-   git clone https://github.com/sendbetter/inbound-email.git
+   git clone https://github.com/kriiv/inbound-email.git
    cd inbound-email
    ```
 
@@ -34,15 +34,22 @@ A simple, efficient script that provides an SMTP server to receive emails, parse
    ```
 
 3. Copy the `.env.example` file to `.env` and set the required configuration: (eg. `mv .env.example .env`)
-   - `MAX_FILE_SIZE`: Maximum size of attachments to process, in bytes (default: 5MB)
-   - `AWS_REGION`: Your AWS region
-   - `AWS_ACCESS_KEY_ID`: Your AWS access key ID
-   - `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key
-   - `S3_BUCKET_NAME`: The name of your S3 bucket for storing attachments
-   - `PORT`: The port for the SMTP server to listen on (default: 25)
-   - `WEBHOOK_URL`: The URL where parsed emails will be sent (required)
-   - `SMTP_SECURE`: Set to 'true' for TLS support (default: false)
-   - `WEBHOOK_CONCURRENCY`: Number of concurrent webhook requests (default: 5)
+
+   | Variable              | Description                                                     | Required | Default     |
+   | --------------------- | --------------------------------------------------------------- | -------- | ----------- |
+   | `WEBHOOK_URL`         | The URL where parsed emails will be sent                        | Yes      | `null`      |
+   | `PORT`                | The port for the SMTP server to listen on                       | No       | `25`        |
+   | `SMTP_SECURE`         | Set to 'true' for TLS support (requires key/cert setup)         | No       | `false`     |
+   | `WEBHOOK_CONCURRENCY` | Number of concurrent webhook requests                           | No       | `5`         |
+   | `MAX_FILE_SIZE`       | Maximum attachment size in bytes (0 to disable S3 uploads)      | No       | `5242880` (5MB) |
+   | `AWS_REGION`          | Your AWS region                                                 | If saving| `null`      |
+   | `AWS_ACCESS_KEY_ID`   | Your AWS access key ID                                          | If saving| `null`      |
+   | `AWS_SECRET_ACCESS_KEY`| Your AWS secret access key                                      | If saving| `null`      |
+   | `S3_BUCKET_NAME`      | The name of your S3 bucket for storing attachments              | If saving| `null`      |
+   | `TLS_KEY_PATH`        | Path to the TLS private key file (if `SMTP_SECURE=true`)        | If secure| `null`      |
+   | `TLS_CERT_PATH`       | Path to the TLS certificate file (if `SMTP_SECURE=true`)        | If secure| `null`      |
+
+   *Note: S3 credentials (`AWS_*`, `S3_BUCKET_NAME`) are required if `MAX_FILE_SIZE` > 0.*
 
 ## Usage
 
