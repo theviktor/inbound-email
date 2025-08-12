@@ -7,21 +7,51 @@ async function parseEmail(stream) {
   delete parsed.attachments;
 
   const processedAttachments = await Promise.all(attachments.map(async att => {
-    const s3Url = await uploadToS3(att);
+    const uploadResult = await uploadToS3(att);
+    
     return {
       filename: att.filename,
       contentType: att.contentType,
       size: att.size,
-      s3Url: s3Url,
-      skipped: s3Url === null
+      location: uploadResult.location,
+      storageType: uploadResult.storageType,
+      metadata: uploadResult.metadata || null,
+      skipped: uploadResult.storageType === 'skipped'
     };
   }));
 
-  parsed.attachmentInfo = processedAttachments.filter(att => !att.skipped);
+  // Separate attachments by storage type
+  parsed.attachmentInfo = processedAttachments.filter(att => !att.skipped).map(att => ({
+    filename: att.filename,
+    contentType: att.contentType,
+    size: att.size,
+    location: att.location,
+    storageType: att.storageType,
+    ...(att.storageType === 'local' && { 
+      note: 'Temporarily stored locally, will be uploaded to S3 when available',
+      metadata: att.metadata 
+    })
+  }));
+  
   parsed.skippedAttachments = processedAttachments.filter(att => att.skipped).map(att => ({
     filename: att.filename,
-    size: att.size
+    size: att.size,
+    reason: 'File size exceeds maximum allowed'
   }));
+
+  // Add storage summary
+  const s3Count = processedAttachments.filter(att => att.storageType === 's3').length;
+  const localCount = processedAttachments.filter(att => att.storageType === 'local').length;
+  const skippedCount = processedAttachments.filter(att => att.skipped).length;
+  
+  if (attachments.length > 0) {
+    parsed.storageSummary = {
+      total: attachments.length,
+      uploadedToS3: s3Count,
+      storedLocally: localCount,
+      skipped: skippedCount
+    };
+  }
 
   return parsed;
 }

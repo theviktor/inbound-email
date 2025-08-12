@@ -16,3 +16,4 @@ Thumbs.db
 .env.test
 tmp/
 temp/
+CLAUDE.md

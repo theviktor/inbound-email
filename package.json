@@ -1,6 +1,9 @@
 {
     "scripts": {
-        "start": "node server.js"
+        "start": "node server.js",
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.x.x",
@@ -13,5 +16,9 @@
         "smtp-server": "^3.13.5",
         "winston": "^3.x.x",
         "winston-daily-rotate-file": "^4.x.x"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0",
+        "nodemailer": "^6.9.7"
     }
 }
