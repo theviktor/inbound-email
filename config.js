@@ -4,7 +4,7 @@ const AWS = require('aws-sdk');
 dotenv.config();
 
 module.exports = {
-  WEBHOOK_URL: process.env.WEBHOOK_URL || 'https://enkhprqr4n2t.x.pipedream.net/',
+  WEBHOOK_URL: process.env.WEBHOOK_URL,
   WEBHOOK_RULES: process.env.WEBHOOK_RULES,
   PORT: process.env.PORT || 25,
   MAX_FILE_SIZE: process.env.MAX_FILE_SIZE || 5 * 1024 * 1024,
@@ -18,6 +18,8 @@ module.exports = {
   s3: new AWS.S3({
     region: process.env.AWS_REGION,
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    endpoint: process.env.S3_ENDPOINT,
+    s3ForcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true'
   })
 };

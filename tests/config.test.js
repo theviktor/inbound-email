@@ -47,4 +47,19 @@ describe('Configuration', () => {
     expect(config.PORT).toBe('3000');
     expect(config.MAX_FILE_SIZE).toBe('10485760');
   });
+
+  it('should configure S3 with custom endpoint and path style', () => {
+    process.env.S3_ENDPOINT = 'http://minio:9000';
+    process.env.S3_FORCE_PATH_STYLE = 'true';
+    
+    jest.resetModules();
+    const config = require('../config');
+
+    expect(config.s3.config.endpoint).toBe('http://minio:9000');
+    expect(config.s3.config.s3ForcePathStyle).toBe(true);
+
+    // Clean up
+    delete process.env.S3_ENDPOINT;
+    delete process.env.S3_FORCE_PATH_STYLE;
+  });
 });
