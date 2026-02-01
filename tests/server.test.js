@@ -1,6 +1,13 @@
 const net = require('net');
 const nodemailer = require('nodemailer');
 
+// Mock emailParser service
+jest.mock('../services/emailParser', () => ({
+  parseEmail: jest.fn()
+}));
+
+const { parseEmail } = require('../services/emailParser');
+
 describe('SMTP Server Integration', () => {
   let server;
   let serverProcess;
@@ -14,6 +21,10 @@ describe('SMTP Server Integration', () => {
         on: jest.fn()
       }))
     }));
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
   afterAll(async () => {
@@ -51,16 +62,12 @@ describe('SMTP Server Integration', () => {
       html: '<p>This is a test email</p>'
     };
 
-    // Mock the email parser
-    jest.mock('../services/emailParser', () => ({
-      parseEmail: jest.fn().mockResolvedValue({
-        ...testEmail,
-        attachmentInfo: [],
-        skippedAttachments: []
-      })
-    }));
+    parseEmail.mockResolvedValue({
+      ...testEmail,
+      attachmentInfo: [],
+      skippedAttachments: []
+    });
 
-    const { parseEmail } = require('../services/emailParser');
     const result = await parseEmail('mock-stream');
     
     expect(result.from).toBe(testEmail.from);
@@ -81,26 +88,23 @@ describe('SMTP Server Integration', () => {
       ]
     };
 
-    jest.mock('../services/emailParser', () => ({
-      parseEmail: jest.fn().mockResolvedValue({
-        from: testEmail.from,
-        subject: testEmail.subject,
-        attachmentInfo: [{
-          filename: 'document.pdf',
-          size: 1024,
-          location: 'https://s3.amazonaws.com/bucket/document.pdf',
-          storageType: 's3'
-        }],
-        storageSummary: {
-          total: 1,
-          uploadedToS3: 1,
-          storedLocally: 0,
-          skipped: 0
-        }
-      })
-    }));
+    parseEmail.mockResolvedValue({
+      from: testEmail.from,
+      subject: testEmail.subject,
+      attachmentInfo: [{
+        filename: 'document.pdf',
+        size: 1024,
+        location: 'https://s3.amazonaws.com/bucket/document.pdf',
+        storageType: 's3'
+      }],
+      storageSummary: {
+        total: 1,
+        uploadedToS3: 1,
+        storedLocally: 0,
+        skipped: 0
+      }
+    });
 
-    const { parseEmail } = require('../services/emailParser');
     const result = await parseEmail('mock-stream');
     
     expect(result.attachmentInfo).toHaveLength(1);
@@ -144,11 +148,7 @@ describe('SMTP Server Integration', () => {
 
   it('should handle errors properly', async () => {
     // Test error handling
-    jest.mock('../services/emailParser', () => ({
-      parseEmail: jest.fn().mockRejectedValue(new Error('Parsing failed'))
-    }));
-
-    const { parseEmail } = require('../services/emailParser');
+    parseEmail.mockRejectedValue(new Error('Parsing failed'));
     
     await expect(parseEmail('invalid-stream')).rejects.toThrow('Parsing failed');
   });

@@ -2,7 +2,6 @@ const SMTPServer = require('smtp-server').SMTPServer;
 const config = require('./config');
 const { parseEmail } = require('./services/emailParser');
 const { sendToWebhook } = require('./services/webhookService');
-require('aws-sdk/lib/maintenance_mode_message').suppress = true;
 const Queue = require('better-queue');
 const winston = require('winston');
 require('winston-daily-rotate-file');

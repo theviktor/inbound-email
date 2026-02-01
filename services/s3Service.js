@@ -1,6 +1,8 @@
 const config = require('../config');
 const LocalStorage = require('./localStorage');
 const winston = require('winston');
+const { Upload } = require('@aws-sdk/lib-storage');
+const { HeadBucketCommand } = require('@aws-sdk/client-s3');
 
 const logger = winston.createLogger({
   level: 'info',
@@ -31,7 +33,11 @@ async function uploadToS3(attachment) {
   };
 
   try {
-    const result = await config.s3.upload(params).promise();
+    const upload = new Upload({
+      client: config.s3,
+      params: params
+    });
+    const result = await upload.done();
     logger.info(`Successfully uploaded to S3: ${attachment.filename}`);
     return { location: result.Location, storageType: 's3' };
   } catch (error) {
@@ -103,7 +109,11 @@ function startRetryProcess() {
     
     for (const item of toRetry) {
       try {
-        const result = await config.s3.upload(item.s3Params).promise();
+        const upload = new Upload({
+          client: config.s3,
+          params: item.s3Params
+        });
+        await upload.done();
         logger.info(`Successfully uploaded to S3 on retry: ${item.attachment.filename}`);
         
         // Remove local file after successful upload
@@ -121,7 +131,7 @@ function startRetryProcess() {
 // Check S3 connectivity
 async function checkS3Health() {
   try {
-    await config.s3.headBucket({ Bucket: config.BUCKET_NAME }).promise();
+    await config.s3.send(new HeadBucketCommand({ Bucket: config.BUCKET_NAME }));
     return true;
   } catch (error) {
     logger.error('S3 health check failed:', error);
@@ -138,4 +148,9 @@ async function checkS3Health() {
   }
 })();
 
-module.exports = { uploadToS3, checkS3Health };
+module.exports = { 
+  uploadToS3, 
+  checkS3Health,
+  // Export for testing
+  localStorage
+};

@@ -17,12 +17,18 @@ describe('LocalStorage Service', () => {
       // Directory might not exist
     }
     
+    const LocalStorage = require('../../services/localStorage');
+    
+    // Mock startCleanupTask to avoid background interference
+    jest.spyOn(LocalStorage.prototype, 'startCleanupTask').mockImplementation(() => {});
+    
     localStorage = new LocalStorage(testConfig);
-    // Wait for initialization
+    // Wait for initialization (mkdir)
     await new Promise(resolve => setTimeout(resolve, 100));
   });
 
   afterEach(async () => {
+    jest.restoreAllMocks();
     // Clean up after each test
     if (localStorage && localStorage.cleanupInterval) {
       clearInterval(localStorage.cleanupInterval);
@@ -45,7 +51,12 @@ describe('LocalStorage Service', () => {
       expect(result.location).toContain('test.pdf');
       
       // Verify file exists
-      const fileExists = await fs.stat(result.location).then(() => true).catch(() => false);
+      const fileExists = await fs.stat(result.location)
+        .then(() => true)
+        .catch((err) => {
+            console.error('File stat failed:', err);
+            return false;
+        });
       expect(fileExists).toBe(true);
       
       // Verify metadata file exists

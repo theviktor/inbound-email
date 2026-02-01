@@ -33,6 +33,9 @@ class LocalStorage {
 
   async save(attachment) {
     try {
+      // Ensure directory exists (handling race condition from constructor)
+      await fs.mkdir(this.basePath, { recursive: true });
+
       const filename = this.generateFilename(attachment.filename);
       const filepath = path.join(this.basePath, filename);
       

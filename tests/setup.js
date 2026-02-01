@@ -1,6 +1,3 @@
-// Suppress AWS SDK maintenance mode warning during tests
-require('aws-sdk/lib/maintenance_mode_message').suppress = true;
-
 // Set test environment
 process.env.NODE_ENV = 'test';
 process.env.WEBHOOK_URL = 'https://test.webhook.com';

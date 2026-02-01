@@ -23,8 +23,21 @@ describe('Webhook Service', () => {
 
     expect(axios.post).toHaveBeenCalledWith(
       'https://test.webhook.com',
-      testData,
-      { timeout: 5000 }
+      expect.objectContaining({
+        ...testData,
+        _webhookMeta: expect.objectContaining({
+          webhook: 'https://test.webhook.com',
+          ruleName: 'default',
+          priority: 9999
+        })
+      }),
+      expect.objectContaining({
+        timeout: 5000,
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'User-Agent': 'inbound-email-service/1.0'
+        })
+      })
     );
   });
 
@@ -35,11 +48,11 @@ describe('Webhook Service', () => {
 
     const testData = { subject: 'Test' };
 
-    await expect(sendToWebhook(testData)).rejects.toThrow('timeout');
+    await expect(sendToWebhook(testData)).rejects.toThrow('All 1 webhook(s) failed');
     expect(axios.post).toHaveBeenCalledWith(
       'https://test.webhook.com',
-      testData,
-      { timeout: 5000 }
+      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -53,7 +66,7 @@ describe('Webhook Service', () => {
 
     const testData = { subject: 'Test' };
 
-    await expect(sendToWebhook(testData)).rejects.toThrow('Request failed');
+    await expect(sendToWebhook(testData)).rejects.toThrow('All 1 webhook(s) failed');
   });
 
   it('should handle network errors', async () => {
@@ -63,7 +76,7 @@ describe('Webhook Service', () => {
 
     const testData = { subject: 'Test' };
 
-    await expect(sendToWebhook(testData)).rejects.toThrow('Network Error');
+    await expect(sendToWebhook(testData)).rejects.toThrow('All 1 webhook(s) failed');
   });
 
   it('should send large payloads', async () => {
@@ -83,8 +96,18 @@ describe('Webhook Service', () => {
 
     expect(axios.post).toHaveBeenCalledWith(
       'https://test.webhook.com',
-      largeData,
-      { timeout: 5000 }
+      expect.objectContaining({
+        ...largeData,
+        _webhookMeta: expect.objectContaining({
+          webhook: 'https://test.webhook.com'
+        })
+      }),
+      expect.objectContaining({
+        timeout: 5000,
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json'
+        })
+      })
     );
   });
 });

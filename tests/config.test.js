@@ -19,8 +19,8 @@ describe('Configuration', () => {
     const config = require('../config');
     
     expect(config.s3).toBeDefined();
-    expect(typeof config.s3.upload).toBe('function');
-    expect(typeof config.s3.headBucket).toBe('function');
+    // V3 client has send method
+    expect(typeof config.s3.send).toBe('function');
   });
 
   it('should parse SMTP_SECURE as boolean', () => {
@@ -48,15 +48,21 @@ describe('Configuration', () => {
     expect(config.MAX_FILE_SIZE).toBe('10485760');
   });
 
-  it('should configure S3 with custom endpoint and path style', () => {
+  it('should configure S3 with custom endpoint and path style', async () => {
     process.env.S3_ENDPOINT = 'http://minio:9000';
     process.env.S3_FORCE_PATH_STYLE = 'true';
     
     jest.resetModules();
     const config = require('../config');
 
-    expect(config.s3.config.endpoint).toBe('http://minio:9000');
-    expect(config.s3.config.s3ForcePathStyle).toBe(true);
+    // In v3, endpoint is a provider function or value in the config object
+    // We can verify the config object passed to the client
+    const clientConfig = await config.s3.config.endpoint();
+    expect(clientConfig.protocol).toBe('http:');
+    expect(clientConfig.hostname).toBe('minio');
+    expect(clientConfig.port).toBe(9000);
+    
+    expect(config.s3.config.forcePathStyle).toBe(true);
 
     // Clean up
     delete process.env.S3_ENDPOINT;

@@ -6,9 +6,8 @@
         "test:coverage": "jest --coverage"
     },
     "dependencies": {
-        "@aws-sdk/client-s3": "^3.x.x",
-        "@aws-sdk/lib-storage": "^3.x.x",
-        "aws-sdk": "^2.x",
+        "@aws-sdk/client-s3": "^3.980.0",
+        "@aws-sdk/lib-storage": "^3.980.0",
         "axios": "^1.7.7",
         "better-queue": "^3.8.12",
         "dotenv": "^16.4.5",
@@ -18,7 +17,11 @@
         "winston-daily-rotate-file": "^4.x.x"
     },
     "devDependencies": {
-        "jest": "^29.7.0",
-        "nodemailer": "^6.9.7"
+        "jest": "^30.2.0",
+        "nodemailer": "^7.0.13"
+    },
+    "overrides": {
+        "fast-xml-parser": "^5.3.4",
+        "test-exclude": "^7.0.1"
     }
 }

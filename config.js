@@ -1,5 +1,5 @@
 const dotenv = require('dotenv');
-const AWS = require('aws-sdk');
+const { S3Client } = require('@aws-sdk/client-s3');
 
 dotenv.config();
 
@@ -15,11 +15,13 @@ module.exports = {
   LOCAL_STORAGE_RETENTION: process.env.LOCAL_STORAGE_RETENTION || 24,
   S3_RETRY_INTERVAL: process.env.S3_RETRY_INTERVAL || 5,
 
-  s3: new AWS.S3({
+  s3: new S3Client({
     region: process.env.AWS_REGION,
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
     endpoint: process.env.S3_ENDPOINT,
-    s3ForcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true'
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true'
   })
 };
