@@ -18,11 +18,25 @@ function createS3Client() {
   const region = process.env.AWS_REGION;
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+  const bucketName = process.env.S3_BUCKET_NAME;
+  const endpoint = process.env.S3_ENDPOINT;
   
   // Return null if S3 is not configured
   if (!region || !accessKeyId || !secretAccessKey) {
+    console.log('[S3 Config] S3 not configured - missing credentials:', {
+      hasRegion: !!region,
+      hasAccessKeyId: !!accessKeyId,
+      hasSecretAccessKey: !!secretAccessKey
+    });
     return null;
   }
+  
+  console.log('[S3 Config] S3 credentials found:', {
+    region,
+    bucket: bucketName,
+    endpoint: endpoint || 'default AWS',
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true'
+  });
   
   const config = {
     region: region,
