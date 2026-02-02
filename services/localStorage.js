@@ -1,40 +1,37 @@
 const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
-const winston = require('winston');
-
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console()
-  ]
-});
+const logger = require('./logger');
 
 class LocalStorage {
   constructor(config) {
     this.basePath = config.LOCAL_STORAGE_PATH || './temp-attachments';
     this.retentionHours = config.LOCAL_STORAGE_RETENTION || 24;
-    this.initializeStorage();
+    this._initialized = false;
+    this._initPromise = this.initializeStorage();
   }
 
   async initializeStorage() {
     try {
       await fs.mkdir(this.basePath, { recursive: true });
+      this._initialized = true;
       logger.info(`Local storage initialized at: ${this.basePath}`);
       this.startCleanupTask();
     } catch (error) {
       logger.error('Failed to initialize local storage:', error);
+      throw error;
+    }
+  }
+
+  async ensureInitialized() {
+    if (!this._initialized) {
+      await this._initPromise;
     }
   }
 
   async save(attachment) {
     try {
-      // Ensure directory exists (handling race condition from constructor)
-      await fs.mkdir(this.basePath, { recursive: true });
+      await this.ensureInitialized();
 
       const filename = this.generateFilename(attachment.filename);
       const filepath = path.join(this.basePath, filename);
@@ -122,6 +119,7 @@ class LocalStorage {
 
   async getRetryQueue() {
     try {
+      await this.ensureInitialized();
       const files = await fs.readdir(this.basePath);
       const queue = [];
       

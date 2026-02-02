@@ -1,15 +1,17 @@
-const winston = require('winston');
+const logger = require('./logger');
 
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console()
-  ]
-});
+// Helper to validate webhook URLs
+function isValidWebhookUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 class WebhookRouter {
   constructor(config) {
@@ -27,16 +29,29 @@ class WebhookRouter {
         ? JSON.parse(rulesConfig) 
         : rulesConfig;
       
-      // Sort rules by priority (lower number = higher priority)
+      let rulesList = [];
       if (Array.isArray(rules)) {
-        return rules.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+        rulesList = rules;
       } else if (rules.rules && Array.isArray(rules.rules)) {
-        return rules.rules.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+        rulesList = rules.rules;
       }
       
-      return [];
+      // Validate and filter rules with valid webhook URLs
+      const validRules = rulesList.filter(rule => {
+        if (!isValidWebhookUrl(rule.webhook)) {
+          logger.warn('Invalid webhook URL in rule, skipping:', {
+            ruleName: rule.name || 'unnamed',
+            webhook: rule.webhook
+          });
+          return false;
+        }
+        return true;
+      });
+      
+      // Sort rules by priority (lower number = higher priority)
+      return validRules.sort((a, b) => (a.priority || 999) - (b.priority || 999));
     } catch (error) {
-      logger.error('Failed to parse webhook rules:', error);
+      logger.error('Failed to parse webhook rules:', { message: error.message });
       return [];
     }
   }

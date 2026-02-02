@@ -1,31 +1,38 @@
 const axios = require('axios');
 const config = require('../config');
 const WebhookRouter = require('./webhookRouter');
-const winston = require('winston');
-
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console()
-  ]
-});
+const logger = require('./logger');
 
 const webhookRouter = new WebhookRouter(config);
 
-async function sendToWebhook(data) {
+async function sendToWebhook(data, retryOnlyFailed = null) {
   // Get matching webhooks based on routing rules
-  const matchedWebhooks = webhookRouter.route(data);
+  let matchedWebhooks = webhookRouter.route(data);
   
   if (matchedWebhooks.length === 0) {
     throw new Error('No webhook endpoints found for this email');
   }
 
+  // If retrying, only send to previously failed webhooks
+  if (retryOnlyFailed && Array.isArray(retryOnlyFailed)) {
+    matchedWebhooks = matchedWebhooks.filter(m => 
+      retryOnlyFailed.includes(m.webhook)
+    );
+    if (matchedWebhooks.length === 0) {
+      // All previously failed webhooks have been removed from config
+      return {
+        totalWebhooks: 0,
+        successful: 0,
+        failed: 0,
+        results: [],
+        note: 'No matching webhooks found for retry'
+      };
+    }
+  }
+
   const results = [];
   const errors = [];
+  const timeout = config.WEBHOOK_TIMEOUT;
 
   // Send to all matched webhooks
   for (const match of matchedWebhooks) {
@@ -40,7 +47,7 @@ async function sendToWebhook(data) {
           webhook: match.webhook
         }
       }, { 
-        timeout: 5000,
+        timeout: timeout,
         headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'inbound-email-service/1.0'
@@ -76,26 +83,29 @@ async function sendToWebhook(data) {
     }
   }
 
-  // If all webhooks failed, throw an error
+  // If all webhooks failed, throw an error with failed webhooks list for retry
   if (errors.length === matchedWebhooks.length) {
     const error = new Error(`All ${matchedWebhooks.length} webhook(s) failed`);
     error.results = results;
+    error.failedWebhooks = errors.map(e => e.webhook);
     throw error;
   }
 
   // Return results for partial success scenarios
+  // Include failed webhooks list so caller can decide to retry just those
   return {
     totalWebhooks: matchedWebhooks.length,
     successful: results.filter(r => r.success).length,
     failed: errors.length,
-    results: results
+    results: results,
+    failedWebhooks: errors.map(e => e.webhook)
   };
 }
 
 // Legacy function for backward compatibility
 function sendToSingleWebhook(data, webhookUrl = config.WEBHOOK_URL) {
   return axios.post(webhookUrl, data, { 
-    timeout: 5000,
+    timeout: config.WEBHOOK_TIMEOUT,
     headers: {
       'Content-Type': 'application/json',
       'User-Agent': 'inbound-email-service/1.0'
@@ -107,7 +117,7 @@ function sendToSingleWebhook(data, webhookUrl = config.WEBHOOK_URL) {
 async function checkWebhookHealth(webhookUrl) {
   try {
     const response = await axios.get(webhookUrl, { 
-      timeout: 5000,
+      timeout: config.WEBHOOK_TIMEOUT,
       validateStatus: (status) => status < 500 // Accept any status code < 500
     });
     return { healthy: true, status: response.status };

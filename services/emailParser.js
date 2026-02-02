@@ -1,12 +1,14 @@
 const simpleParser = require('mailparser').simpleParser;
 const { uploadToS3 } = require('./s3Service');
+const logger = require('./logger');
 
 async function parseEmail(stream) {
   const parsed = await simpleParser(stream);
   const attachments = parsed.attachments || [];
   delete parsed.attachments;
 
-  const processedAttachments = await Promise.all(attachments.map(async att => {
+  // Use Promise.allSettled to handle individual attachment failures gracefully
+  const results = await Promise.allSettled(attachments.map(async att => {
     const uploadResult = await uploadToS3(att);
     
     return {
@@ -19,6 +21,29 @@ async function parseEmail(stream) {
       skipped: uploadResult.storageType === 'skipped'
     };
   }));
+
+  // Process results, handling both fulfilled and rejected promises
+  const processedAttachments = results.map((result, index) => {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    } else {
+      // Log the error but don't fail the entire email
+      const att = attachments[index];
+      logger.error('Failed to process attachment:', {
+        filename: att.filename,
+        error: result.reason?.message || 'Unknown error'
+      });
+      return {
+        filename: att.filename,
+        contentType: att.contentType,
+        size: att.size,
+        location: null,
+        storageType: 'failed',
+        error: result.reason?.message || 'Unknown error',
+        skipped: false
+      };
+    }
+  });
 
   // Separate attachments by storage type
   parsed.attachmentInfo = processedAttachments.filter(att => !att.skipped).map(att => ({

@@ -23,8 +23,8 @@ describe('LocalStorage Service', () => {
     jest.spyOn(LocalStorage.prototype, 'startCleanupTask').mockImplementation(() => {});
     
     localStorage = new LocalStorage(testConfig);
-    // Wait for initialization (mkdir)
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Properly wait for initialization using ensureInitialized
+    await localStorage.ensureInitialized();
   });
 
   afterEach(async () => {

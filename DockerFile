@@ -1,5 +1,4 @@
 ARG NODE_VERSION=22.13.1
-ARG VERSION
 
 FROM node:${NODE_VERSION}-alpine
 
@@ -10,17 +9,19 @@ ENV NODE_ENV="production" \
 
 WORKDIR /app
 
-RUN apk add --no-cache --virtual=.build-deps git \
- && git clone https://github.com/theviktor/inbound-email.git . \
- && if [ -n "${VERSION}" ]; then \
-      NUMBER_COMMITS_TO_REVERT=$(( $(git rev-list --count --first-parent HEAD) - $(echo "${VERSION}" | cut -d "." -f3) )); \
-      git checkout "master~${NUMBER_COMMITS_TO_REVERT}"; \
-    fi \
- && npm install --omit=dev \
- && mkdir -p logs \
- && chown -R node:node /app \
- && apk del --purge .build-deps \
- && rm -rf /root/.cache /root/.cargo /tmp/*
+# Copy package files first for better layer caching
+COPY package*.json ./
+
+# Install production dependencies
+RUN npm install --omit=dev
+
+# Copy application source
+COPY config.js server.js ./
+COPY services/ ./services/
+
+# Create necessary directories and set permissions
+RUN mkdir -p logs temp-attachments \
+ && chown -R node:node /app
 
 USER node
 EXPOSE 2525

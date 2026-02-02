@@ -8,11 +8,11 @@ describe('Configuration', () => {
     const config = require('../config');
 
     expect(config.WEBHOOK_URL).toBe('https://test.webhook.com');
-    expect(config.PORT).toBe('2525');
-    expect(config.MAX_FILE_SIZE).toBe('5242880');
+    expect(config.PORT).toBe(2525);
+    expect(config.MAX_FILE_SIZE).toBe(5242880);
     expect(config.BUCKET_NAME).toBe('test-bucket');
     expect(config.SMTP_SECURE).toBe(false);
-    expect(config.WEBHOOK_CONCURRENCY).toBe('5');
+    expect(config.WEBHOOK_CONCURRENCY).toBe(5);
   });
 
   it('should have AWS S3 client configured', () => {
@@ -44,8 +44,8 @@ describe('Configuration', () => {
     const config = require('../config');
 
     expect(config.WEBHOOK_URL).toBe('https://custom.webhook.com');
-    expect(config.PORT).toBe('3000');
-    expect(config.MAX_FILE_SIZE).toBe('10485760');
+    expect(config.PORT).toBe(3000);
+    expect(config.MAX_FILE_SIZE).toBe(10485760);
   });
 
   it('should configure S3 with custom endpoint and path style', async () => {

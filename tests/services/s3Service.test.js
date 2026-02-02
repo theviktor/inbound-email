@@ -139,7 +139,8 @@ describe('S3 Service', () => {
     it('should return true when S3 is accessible', async () => {
       const result = await s3Service.checkS3Health();
       
-      expect(result).toBe(true);
+      expect(result.configured).toBe(true);
+      expect(result.healthy).toBe(true);
       expect(mockS3Send).toHaveBeenCalled();
     });
 
@@ -148,7 +149,9 @@ describe('S3 Service', () => {
 
       const result = await s3Service.checkS3Health();
       
-      expect(result).toBe(false);
+      expect(result.configured).toBe(true);
+      expect(result.healthy).toBe(false);
+      expect(result.error).toBe('Bucket not found');
     });
   });
 });
