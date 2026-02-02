@@ -88,8 +88,22 @@ module.exports = {
   // S3 client (null if not configured)
   s3: createS3Client(),
   
+  // Allowed recipient domains (empty array = accept all domains)
+  ALLOWED_RECIPIENT_DOMAINS: process.env.ALLOWED_RECIPIENT_DOMAINS 
+    ? process.env.ALLOWED_RECIPIENT_DOMAINS.split(',').map(d => d.trim().toLowerCase()).filter(d => d)
+    : [],
+  
   // Helper to check if S3 is configured
   isS3Configured() {
     return this.s3 !== null && this.BUCKET_NAME;
+  },
+  
+  // Helper to check if a recipient domain is allowed
+  isRecipientDomainAllowed(email) {
+    if (this.ALLOWED_RECIPIENT_DOMAINS.length === 0) {
+      return true; // No restrictions if not configured
+    }
+    const domain = email.split('@')[1]?.toLowerCase();
+    return domain && this.ALLOWED_RECIPIENT_DOMAINS.includes(domain);
   }
 };

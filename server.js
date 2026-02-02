@@ -80,6 +80,15 @@ const webhookQueue = new Queue(async function (task, cb) {
 
 // Build SMTP server options
 const smtpOptions = {
+  onRcptTo(address, session, callback) {
+    const recipient = address.address;
+    if (!config.isRecipientDomainAllowed(recipient)) {
+      const domain = recipient.split('@')[1] || 'invalid';
+      logger.warn('Rejected email to unauthorized domain', { recipient, domain });
+      return callback(new Error(`Recipient domain not allowed: ${domain}`));
+    }
+    callback();
+  },
   onData(stream, session, callback) {
     parseEmail(stream)
       .then(parsed => {
