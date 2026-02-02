@@ -11,7 +11,7 @@ ENV NODE_ENV="production" \
 WORKDIR /app
 
 RUN apk add --no-cache --virtual=.build-deps git \
- && git clone https://github.com/kriiv/inbound-email.git . \
+ && git clone https://github.com/theviktor/inbound-email.git . \
  && if [ -n "${VERSION}" ]; then \
       NUMBER_COMMITS_TO_REVERT=$(( $(git rev-list --count --first-parent HEAD) - $(echo "${VERSION}" | cut -d "." -f3) )); \
       git checkout "master~${NUMBER_COMMITS_TO_REVERT}"; \
