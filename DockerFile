@@ -24,4 +24,4 @@ RUN apk add --no-cache --virtual=.build-deps git \
 USER node
 EXPOSE 2525
 CMD node server.js
-LABEL org.opencontainers.image.source="https://github.com/kriiv/inbound-email"
+LABEL org.opencontainers.image.source="https://github.com/theviktor/inbound-email"
