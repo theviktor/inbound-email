@@ -17,11 +17,12 @@ RUN apk add --no-cache --virtual=.build-deps git \
       git checkout "master~${NUMBER_COMMITS_TO_REVERT}"; \
     fi \
  && npm install --omit=dev \
- && chown -R root:root /app && chmod -R 755 /app \
+ && mkdir -p logs \
+ && chown -R node:node /app \
  && apk del --purge .build-deps \
  && rm -rf /root/.cache /root/.cargo /tmp/*
 
 USER node
 EXPOSE 2525
-CMD node server.js
+CMD ["node", "server.js"]
 LABEL org.opencontainers.image.source="https://github.com/theviktor/inbound-email"
