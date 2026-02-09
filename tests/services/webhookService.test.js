@@ -1,11 +1,23 @@
 const { sendToWebhook } = require('../../services/webhookService');
+const config = require('../../config');
 const axios = require('axios');
 
 jest.mock('axios');
 
 describe('Webhook Service', () => {
+  let originalWebhookSecret;
+
+  beforeAll(() => {
+    originalWebhookSecret = config.WEBHOOK_SECRET;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    config.WEBHOOK_SECRET = '';
+  });
+
+  afterAll(() => {
+    config.WEBHOOK_SECRET = originalWebhookSecret;
   });
 
   it('should send data to webhook successfully', async () => {
@@ -106,6 +118,26 @@ describe('Webhook Service', () => {
         timeout: 5000,
         headers: expect.objectContaining({
           'Content-Type': 'application/json'
+        })
+      })
+    );
+  });
+
+  it('should add webhook signature headers when secret is configured', async () => {
+    const mockResponse = { data: { success: true }, status: 200 };
+    axios.post.mockResolvedValue(mockResponse);
+    config.WEBHOOK_SECRET = 'test-secret';
+
+    await sendToWebhook({ subject: 'Signed Email' });
+
+    expect(axios.post).toHaveBeenCalledWith(
+      'https://test.webhook.com',
+      expect.anything(),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'X-Inbound-Email-Signature': expect.stringMatching(/^sha256=/),
+          'X-Inbound-Email-Timestamp': expect.any(String),
+          'X-Inbound-Email-Signature-Version': 'v1'
         })
       })
     );

@@ -15,6 +15,10 @@ A simple, efficient script that provides an SMTP server to receive emails, parse
 - Configurable via environment variables
 - Handles large attachments gracefully
 - Robust queue system for processing multiple emails and webhook requests simultaneously
+- Durable disk-backed queue for crash-safe webhook delivery
+- Webhook request signing with HMAC (`X-Inbound-Email-Signature`)
+- SMTP ingress hardening (IP allowlists, sender restrictions, rate limits, message size limits)
+- Optional encrypted local attachment storage at rest (AES-256-GCM)
 - **Comprehensive Test Coverage**: >90% code coverage with Jest testing framework
 - Daily rotating logs with 90-day retention
 
@@ -48,9 +52,15 @@ A simple, efficient script that provides an SMTP server to receive emails, parse
    | `PORT`                | The port for the SMTP server to listen on                       | No       | `25`        |
    | `SMTP_SECURE`         | Set to 'true' for TLS support (requires key/cert setup)         | No       | `false`     |
    | `WEBHOOK_CONCURRENCY` | Number of concurrent webhook requests                           | No       | `5`         |
+   | `WEBHOOK_RETRY_DELAY_MS` | Delay before retrying failed durable queue tasks             | No       | `60000`     |
    | `SMTP_MAX_CLIENTS`    | Maximum simultaneous SMTP client connections                    | No       | `200`       |
    | `SMTP_SOCKET_TIMEOUT` | Socket idle timeout in milliseconds                             | No       | `60000`     |
    | `SMTP_CLOSE_TIMEOUT`  | Graceful close wait timeout in milliseconds                     | No       | `30000`     |
+   | `SMTP_MAX_MESSAGE_SIZE` | Maximum accepted SMTP message size in bytes                   | No       | `10485760`  |
+   | `SMTP_RATE_LIMIT_WINDOW_MS` | Window length for per-IP connection limiting in milliseconds | No | `60000` |
+   | `SMTP_RATE_LIMIT_MAX_CONNECTIONS` | Max connections per IP per window                    | No       | `120`       |
+   | `MAX_QUEUE_SIZE`      | Maximum in-memory active queue items before temporary reject    | No       | `1000`      |
+   | `DURABLE_QUEUE_PATH`  | Path for persisted webhook queue items                          | No       | `./queue-data` |
 
    ### Attachment Storage
 
@@ -68,7 +78,26 @@ A simple, efficient script that provides an SMTP server to receive emails, parse
    | ----------------------- | --------------------------------------------------------------- | -------- | ----------- |
    | `LOCAL_STORAGE_PATH`    | Directory for temporary storage when S3 fails                   | No       | `./temp-attachments` |
    | `LOCAL_STORAGE_RETENTION` | Hours to keep local files before cleanup                      | No       | `24`        |
+   | `LOCAL_STORAGE_ENCRYPTION_KEY` | 32-byte key (hex/base64) for local AES-256-GCM encryption | No | `null` |
+   | `EXPOSE_LOCAL_ATTACHMENT_PATHS` | Include local disk paths in webhook payloads           | No       | `false`     |
    | `S3_RETRY_INTERVAL`     | Minutes between S3 retry attempts                               | No       | `5`         |
+
+   ### Ingress Trust Policy
+
+   | Variable              | Description                                                     | Required | Default     |
+   | --------------------- | --------------------------------------------------------------- | -------- | ----------- |
+   | `REQUIRE_TRUSTED_RELAY` | Reject SMTP clients unless they are in `TRUSTED_RELAY_IPS`   | No       | `false`     |
+   | `TRUSTED_RELAY_IPS`   | Comma-separated trusted relay/source IPs                        | If enabled | `[]`      |
+   | `ALLOWED_SMTP_CLIENTS`| Comma-separated allowed SMTP client/source IPs                  | No       | `[]`        |
+   | `ALLOWED_SENDER_DOMAINS` | Comma-separated envelope sender domain allowlist             | No       | `[]`        |
+   | `REQUIRED_AUTH_RESULTS` | Required `Authentication-Results` tokens (e.g. `spf=pass`)   | No       | `[]`        |
+
+   ### Webhook Signing
+
+   | Variable              | Description                                                     | Required | Default     |
+   | --------------------- | --------------------------------------------------------------- | -------- | ----------- |
+   | `WEBHOOK_SECRET`      | HMAC secret used to sign outbound webhook payloads              | No       | `null`      |
+   | `ALLOW_INSECURE_WEBHOOK_HTTP` | Allow non-TLS (`http://`) webhook URLs                  | No       | `false`     |
 
    ### Security (TLS)
 
@@ -89,6 +118,13 @@ npm start
 The SMTP server will start and listen on the specified port (default: 25) on all network interfaces.
 
 You can use pm2 or supervisor to keep the server running after restart. Example: `pm2 start server.js`
+
+When `NODE_ENV=production`, startup validation enforces hardened defaults:
+- `REQUIRE_TRUSTED_RELAY=true`
+- `TRUSTED_RELAY_IPS` must be set
+- `ALLOWED_RECIPIENT_DOMAINS` must be set
+- `WEBHOOK_SECRET` must be set
+- `ALLOW_INSECURE_WEBHOOK_HTTP` must be `false`
 
 ## Multiple Webhook Configuration
 

@@ -1,13 +1,16 @@
 const logger = require('./logger');
 
 // Helper to validate webhook URLs
-function isValidWebhookUrl(url) {
+function isValidWebhookUrl(url, allowInsecureHttp = false) {
   if (!url || typeof url !== 'string') {
     return false;
   }
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    if (parsed.protocol === 'https:') {
+      return true;
+    }
+    return allowInsecureHttp && parsed.protocol === 'http:';
   } catch {
     return false;
   }
@@ -15,8 +18,15 @@ function isValidWebhookUrl(url) {
 
 class WebhookRouter {
   constructor(config) {
+    this.allowInsecureWebhookHttp = !!config.ALLOW_INSECURE_WEBHOOK_HTTP;
     this.rules = this.parseRules(config.WEBHOOK_RULES);
-    this.defaultWebhook = config.WEBHOOK_URL;
+    this.defaultWebhook = isValidWebhookUrl(config.WEBHOOK_URL, this.allowInsecureWebhookHttp)
+      ? config.WEBHOOK_URL
+      : null;
+
+    if (config.WEBHOOK_URL && !this.defaultWebhook) {
+      logger.warn('Default webhook URL is invalid for current policy, ignoring it');
+    }
   }
 
   parseRules(rulesConfig) {
@@ -38,7 +48,7 @@ class WebhookRouter {
       
       // Validate and filter rules with valid webhook URLs
       const validRules = rulesList.filter(rule => {
-        if (!isValidWebhookUrl(rule.webhook)) {
+        if (!isValidWebhookUrl(rule.webhook, this.allowInsecureWebhookHttp)) {
           logger.warn('Invalid webhook URL in rule, skipping:', {
             ruleName: rule.name || 'unnamed',
             webhook: rule.webhook

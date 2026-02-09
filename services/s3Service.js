@@ -1,4 +1,3 @@
-const fs = require('fs').promises;
 const config = require('../config');
 const LocalStorage = require('./localStorage');
 const logger = require('./logger');
@@ -135,8 +134,8 @@ function startRetryProcess() {
       }
       
       try {
-        // Read file content from disk (not from memory)
-        const content = await fs.readFile(item.localPath);
+        // Read file content from disk and decrypt if local encryption is enabled.
+        const content = await localStorage.read(item.localPath);
         
         const upload = new Upload({
           client: config.s3,

@@ -84,6 +84,30 @@ describe('LocalStorage Service', () => {
       // Reset permissions
       await fs.chmod(testConfig.LOCAL_STORAGE_PATH, 0o755);
     });
+
+    it('should encrypt attachment content at rest when key is configured', async () => {
+      const encryptedConfig = {
+        ...testConfig,
+        LOCAL_STORAGE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+      };
+      const encryptedStorage = new LocalStorage(encryptedConfig);
+      await encryptedStorage.ensureInitialized();
+
+      const attachment = {
+        filename: 'secret.txt',
+        contentType: 'text/plain',
+        size: 11,
+        content: Buffer.from('hello world')
+      };
+
+      const result = await encryptedStorage.save(attachment);
+      const rawOnDisk = await fs.readFile(result.location);
+      const decrypted = await encryptedStorage.read(result.location);
+
+      expect(rawOnDisk.equals(Buffer.from('hello world'))).toBe(false);
+      expect(decrypted.equals(Buffer.from('hello world'))).toBe(true);
+      expect(result.metadata.encrypted).toBe(true);
+    });
   });
 
   describe('generateFilename', () => {

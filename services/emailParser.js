@@ -1,6 +1,7 @@
 const simpleParser = require('mailparser').simpleParser;
 const { uploadToS3 } = require('./s3Service');
 const logger = require('./logger');
+const config = require('../config');
 
 async function parseEmail(stream) {
   const parsed = await simpleParser(stream);
@@ -47,14 +48,15 @@ async function parseEmail(stream) {
 
   // Separate attachments by storage type
   parsed.attachmentInfo = processedAttachments.filter(att => !att.skipped).map(att => ({
+    // Never expose local disk paths to downstream systems unless explicitly opted in.
     filename: att.filename,
     contentType: att.contentType,
     size: att.size,
-    location: att.location,
+    location: att.storageType === 'local' && !config.EXPOSE_LOCAL_ATTACHMENT_PATHS ? null : att.location,
     storageType: att.storageType,
     ...(att.storageType === 'local' && { 
       note: 'Temporarily stored locally, will be uploaded to S3 when available',
-      metadata: att.metadata 
+      attachmentId: att.metadata?.fileId || null
     })
   }));
   

@@ -1,9 +1,43 @@
 const axios = require('axios');
+const crypto = require('crypto');
 const config = require('../config');
 const WebhookRouter = require('./webhookRouter');
 const logger = require('./logger');
 
 const webhookRouter = new WebhookRouter(config);
+
+function buildSignatureHeaders(payload) {
+  if (!config.WEBHOOK_SECRET) {
+    return {};
+  }
+
+  const timestamp = Date.now().toString();
+  const payloadJson = JSON.stringify(payload);
+  const signed = `${timestamp}.${payloadJson}`;
+  const signature = crypto
+    .createHmac('sha256', config.WEBHOOK_SECRET)
+    .update(signed)
+    .digest('hex');
+
+  return {
+    'X-Inbound-Email-Timestamp': timestamp,
+    'X-Inbound-Email-Signature': `sha256=${signature}`,
+    'X-Inbound-Email-Signature-Version': 'v1'
+  };
+}
+
+function summarizeResponseData(data) {
+  if (data === undefined || data === null) {
+    return undefined;
+  }
+  if (typeof data === 'string') {
+    return `[string length=${data.length}]`;
+  }
+  if (typeof data === 'object') {
+    return `[object keys=${Object.keys(data).slice(0, 20).join(',')}]`;
+  }
+  return `[${typeof data}]`;
+}
 
 async function sendToWebhook(data, retryOnlyFailed = null) {
   // Get matching webhooks based on routing rules
@@ -39,18 +73,21 @@ async function sendToWebhook(data, retryOnlyFailed = null) {
     try {
       logger.info(`Sending to webhook: ${match.webhook} (rule: ${match.ruleName})`);
       
-      const response = await axios.post(match.webhook, {
+      const payload = {
         ...data,
         _webhookMeta: {
           ruleName: match.ruleName,
           priority: match.priority,
           webhook: match.webhook
         }
-      }, { 
+      };
+
+      const response = await axios.post(match.webhook, payload, { 
         timeout: timeout,
         headers: {
           'Content-Type': 'application/json',
-          'User-Agent': 'inbound-email-service/1.0'
+          'User-Agent': 'inbound-email-service/1.0',
+          ...buildSignatureHeaders(payload)
         }
       });
 
@@ -78,7 +115,7 @@ async function sendToWebhook(data, retryOnlyFailed = null) {
       logger.error(`Failed to send to ${match.webhook}:`, {
         error: error.message,
         status: error.response?.status,
-        data: error.response?.data
+        responseData: summarizeResponseData(error.response?.data)
       });
     }
   }

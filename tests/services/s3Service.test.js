@@ -17,6 +17,8 @@ jest.mock('@aws-sdk/lib-storage', () => ({
 jest.mock('../../services/localStorage', () => {
   return jest.fn().mockImplementation(() => ({
     save: jest.fn(),
+    read: jest.fn(),
+    ensureInitialized: jest.fn().mockResolvedValue(undefined),
     getRetryQueue: jest.fn().mockResolvedValue([]),
     remove: jest.fn()
   }));

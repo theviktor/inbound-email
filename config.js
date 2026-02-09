@@ -13,6 +13,23 @@ function parseIntEnv(value, defaultValue) {
   return isNaN(parsed) ? defaultValue : parsed;
 }
 
+function parseBooleanEnv(value, defaultValue = false) {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+  return value === 'true';
+}
+
+function parseCsvEnv(value) {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 // Create S3 client only if credentials are configured
 function createS3Client() {
   const region = process.env.AWS_REGION;
@@ -91,13 +108,28 @@ module.exports = {
   SMTP_SECURE: process.env.SMTP_SECURE === 'true',
   WEBHOOK_CONCURRENCY: parseIntEnv(process.env.WEBHOOK_CONCURRENCY, 5),
   WEBHOOK_TIMEOUT: parseIntEnv(process.env.WEBHOOK_TIMEOUT, 5000),
+  WEBHOOK_RETRY_DELAY_MS: parseIntEnv(process.env.WEBHOOK_RETRY_DELAY_MS, 60000),
   SMTP_MAX_CLIENTS: parseIntEnv(process.env.SMTP_MAX_CLIENTS, 200),
   SMTP_SOCKET_TIMEOUT: parseIntEnv(process.env.SMTP_SOCKET_TIMEOUT, 60000),
   SMTP_CLOSE_TIMEOUT: parseIntEnv(process.env.SMTP_CLOSE_TIMEOUT, 30000),
+  SMTP_MAX_MESSAGE_SIZE: parseIntEnv(process.env.SMTP_MAX_MESSAGE_SIZE, 10 * 1024 * 1024),
+  SMTP_RATE_LIMIT_WINDOW_MS: parseIntEnv(process.env.SMTP_RATE_LIMIT_WINDOW_MS, 60000),
+  SMTP_RATE_LIMIT_MAX_CONNECTIONS: parseIntEnv(process.env.SMTP_RATE_LIMIT_MAX_CONNECTIONS, 120),
+  MAX_QUEUE_SIZE: parseIntEnv(process.env.MAX_QUEUE_SIZE, 1000),
   LOCAL_STORAGE_PATH: process.env.LOCAL_STORAGE_PATH || './temp-attachments',
   LOCAL_STORAGE_RETENTION: parseIntEnv(process.env.LOCAL_STORAGE_RETENTION, 24),
+  LOCAL_STORAGE_ENCRYPTION_KEY: process.env.LOCAL_STORAGE_ENCRYPTION_KEY || '',
   S3_RETRY_INTERVAL: parseIntEnv(process.env.S3_RETRY_INTERVAL, 5),
   S3_MAX_RETRIES: parseIntEnv(process.env.S3_MAX_RETRIES, 100),
+  DURABLE_QUEUE_PATH: process.env.DURABLE_QUEUE_PATH || './queue-data',
+  ALLOWED_SMTP_CLIENTS: parseCsvEnv(process.env.ALLOWED_SMTP_CLIENTS),
+  TRUSTED_RELAY_IPS: parseCsvEnv(process.env.TRUSTED_RELAY_IPS),
+  ALLOWED_SENDER_DOMAINS: parseCsvEnv(process.env.ALLOWED_SENDER_DOMAINS),
+  REQUIRED_AUTH_RESULTS: parseCsvEnv(process.env.REQUIRED_AUTH_RESULTS),
+  REQUIRE_TRUSTED_RELAY: parseBooleanEnv(process.env.REQUIRE_TRUSTED_RELAY, false),
+  EXPOSE_LOCAL_ATTACHMENT_PATHS: parseBooleanEnv(process.env.EXPOSE_LOCAL_ATTACHMENT_PATHS, false),
+  WEBHOOK_SECRET: process.env.WEBHOOK_SECRET || '',
+  ALLOW_INSECURE_WEBHOOK_HTTP: parseBooleanEnv(process.env.ALLOW_INSECURE_WEBHOOK_HTTP, false),
   
   // TLS configuration
   TLS: tlsConfig,
@@ -106,9 +138,7 @@ module.exports = {
   s3: createS3Client(),
   
   // Allowed recipient domains (empty array = accept all domains)
-  ALLOWED_RECIPIENT_DOMAINS: process.env.ALLOWED_RECIPIENT_DOMAINS 
-    ? process.env.ALLOWED_RECIPIENT_DOMAINS.split(',').map(d => d.trim().toLowerCase()).filter(d => d)
-    : [],
+  ALLOWED_RECIPIENT_DOMAINS: parseCsvEnv(process.env.ALLOWED_RECIPIENT_DOMAINS),
   
   // Helper to check if S3 is configured
   isS3Configured() {

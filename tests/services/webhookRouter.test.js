@@ -369,5 +369,20 @@ describe('WebhookRouter', () => {
       const result = router.route(email);
       expect(result[0].webhook).toBe('https://default.webhook.com');
     });
+
+    it('should reject http webhooks unless insecure mode is enabled', () => {
+      const strictRouter = new WebhookRouter({
+        WEBHOOK_URL: 'http://insecure.webhook.com'
+      });
+
+      expect(strictRouter.route({ from: 'test@example.com' })).toHaveLength(0);
+
+      const insecureAllowedRouter = new WebhookRouter({
+        WEBHOOK_URL: 'http://insecure.webhook.com',
+        ALLOW_INSECURE_WEBHOOK_HTTP: true
+      });
+
+      expect(insecureAllowedRouter.route({ from: 'test@example.com' })).toHaveLength(1);
+    });
   });
 });

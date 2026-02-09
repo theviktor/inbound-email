@@ -113,6 +113,7 @@ describe('Email Parser Service', () => {
       location: '/temp-attachments/document.pdf',
       storageType: 'local',
       metadata: {
+        fileId: '1234-document.pdf',
         originalName: 'document.pdf',
         size: 1024,
         savedAt: '2024-01-01T00:00:00Z'
@@ -127,14 +128,10 @@ describe('Email Parser Service', () => {
       filename: 'document.pdf',
       contentType: 'application/pdf',
       size: 1024,
-      location: '/temp-attachments/document.pdf',
+      location: null,
       storageType: 'local',
       note: 'Temporarily stored locally, will be uploaded to S3 when available',
-      metadata: {
-        originalName: 'document.pdf',
-        size: 1024,
-        savedAt: '2024-01-01T00:00:00Z'
-      }
+      attachmentId: '1234-document.pdf'
     });
     
     expect(result.storageSummary).toEqual({
