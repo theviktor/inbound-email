@@ -4,6 +4,7 @@ const { parseEmail } = require('./services/emailParser');
 const { sendToWebhook } = require('./services/webhookService');
 const Queue = require('better-queue');
 const logger = require('./services/logger');
+const { isRecoverableNetworkError, serializeError } = require('./services/errorClassifier');
 
 // Validate configuration BEFORE any component initialization
 function validateConfig() {
@@ -20,6 +21,18 @@ function validateConfig() {
   
   if (typeof config.WEBHOOK_CONCURRENCY !== 'number' || config.WEBHOOK_CONCURRENCY <= 0) {
     errors.push('WEBHOOK_CONCURRENCY must be a valid positive number');
+  }
+
+  if (typeof config.SMTP_MAX_CLIENTS !== 'number' || config.SMTP_MAX_CLIENTS <= 0) {
+    errors.push('SMTP_MAX_CLIENTS must be a valid positive number');
+  }
+
+  if (typeof config.SMTP_SOCKET_TIMEOUT !== 'number' || config.SMTP_SOCKET_TIMEOUT <= 0) {
+    errors.push('SMTP_SOCKET_TIMEOUT must be a valid positive number');
+  }
+
+  if (typeof config.SMTP_CLOSE_TIMEOUT !== 'number' || config.SMTP_CLOSE_TIMEOUT <= 0) {
+    errors.push('SMTP_CLOSE_TIMEOUT must be a valid positive number');
   }
   
   // Check TLS configuration if secure mode is enabled
@@ -101,11 +114,11 @@ const smtpOptions = {
         callback(new Error('Failed to parse email'));
       });
   },
-  onError(error) {
-    logger.error('SMTP server error:', { message: error.message, stack: error.stack });
-  },
   disabledCommands: ['AUTH'],
-  secure: config.SMTP_SECURE
+  secure: config.SMTP_SECURE,
+  maxClients: config.SMTP_MAX_CLIENTS,
+  socketTimeout: config.SMTP_SOCKET_TIMEOUT,
+  closeTimeout: config.SMTP_CLOSE_TIMEOUT
 };
 
 // Add TLS options if secure mode is enabled
@@ -115,6 +128,16 @@ if (config.SMTP_SECURE && config.TLS && !config.TLS.error) {
 }
 
 const server = new SMTPServer(smtpOptions);
+
+server.on('error', (error) => {
+  const errorData = serializeError(error);
+  if (isRecoverableNetworkError(error)) {
+    logger.warn('Recoverable SMTP connection error', errorData);
+    return;
+  }
+
+  logger.error('SMTP server error:', errorData);
+});
 
 server.listen(config.PORT, '0.0.0.0', err => {
   if (err) {
@@ -163,12 +186,26 @@ function gracefulShutdown(reason) {
 }
 
 process.on('uncaughtException', (err) => {
-  logger.error('Uncaught exception:', { message: err.message, stack: err.stack });
+  const errorData = serializeError(err);
+
+  if (isRecoverableNetworkError(err)) {
+    logger.warn('Recoverable uncaught exception ignored', errorData);
+    return;
+  }
+
+  logger.error('Uncaught exception:', errorData);
   gracefulShutdown('Uncaught exception');
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection:', { reason: reason, promise: promise });
+  const reasonData = serializeError(reason);
+
+  if (isRecoverableNetworkError(reason)) {
+    logger.warn('Recoverable unhandled rejection ignored', reasonData);
+    return;
+  }
+
+  logger.error('Unhandled Rejection:', { reason: reasonData, promise: String(promise) });
   gracefulShutdown('Unhandled rejection');
 });
 

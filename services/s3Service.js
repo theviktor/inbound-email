@@ -162,6 +162,7 @@ function startRetryProcess() {
       }
     }
   }, retryIntervalMinutes * 60 * 1000);
+  retryInterval.unref();
   
   logger.info(`Started S3 retry process, checking every ${retryIntervalMinutes} minutes (max ${maxRetries} retries)`);
 }

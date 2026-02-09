@@ -36,7 +36,9 @@ describe('SMTP Server Integration', () => {
   it('should validate configuration on startup', () => {
     // Test configuration validation
     const originalEnv = process.env.WEBHOOK_URL;
-    delete process.env.WEBHOOK_URL;
+    const originalRules = process.env.WEBHOOK_RULES;
+    process.env.WEBHOOK_URL = '';
+    process.env.WEBHOOK_RULES = '';
     
     jest.resetModules();
     
@@ -49,7 +51,17 @@ describe('SMTP Server Integration', () => {
       }
     }).toThrow('Missing required configuration');
     
-    process.env.WEBHOOK_URL = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.WEBHOOK_URL;
+    } else {
+      process.env.WEBHOOK_URL = originalEnv;
+    }
+
+    if (originalRules === undefined) {
+      delete process.env.WEBHOOK_RULES;
+    } else {
+      process.env.WEBHOOK_RULES = originalRules;
+    }
   });
 
   it('should handle email with valid format', async () => {

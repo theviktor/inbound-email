@@ -48,6 +48,9 @@ A simple, efficient script that provides an SMTP server to receive emails, parse
    | `PORT`                | The port for the SMTP server to listen on                       | No       | `25`        |
    | `SMTP_SECURE`         | Set to 'true' for TLS support (requires key/cert setup)         | No       | `false`     |
    | `WEBHOOK_CONCURRENCY` | Number of concurrent webhook requests                           | No       | `5`         |
+   | `SMTP_MAX_CLIENTS`    | Maximum simultaneous SMTP client connections                    | No       | `200`       |
+   | `SMTP_SOCKET_TIMEOUT` | Socket idle timeout in milliseconds                             | No       | `60000`     |
+   | `SMTP_CLOSE_TIMEOUT`  | Graceful close wait timeout in milliseconds                     | No       | `30000`     |
 
    ### Attachment Storage
 

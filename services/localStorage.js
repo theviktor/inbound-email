@@ -109,9 +109,10 @@ class LocalStorage {
 
   startCleanupTask() {
     // Run cleanup every hour
-    setInterval(() => {
+    const cleanupInterval = setInterval(() => {
       this.cleanup();
     }, 60 * 60 * 1000);
+    cleanupInterval.unref();
     
     // Run initial cleanup
     this.cleanup();
